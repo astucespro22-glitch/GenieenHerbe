@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Génie en Herbe - Quiz & Buzzer TV</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: #0f172a;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+  }
+  #game-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: radial-gradient(circle at top, #1e3a8a 0%, #0f172a 100%);
+    color: #fff;
+  }
+  #game-container.gold-theme {
+    background: radial-gradient(circle at top, #78350f 0%, #090d16 100%);
+  }
+
+  /* HUD Supérieur */
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    max-width: 680px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .badge {
+    background: rgba(15, 23, 42, 0.9);
+    color: #fff;
+    padding: 6px 13px;
+    border-radius: 30px;
+    font-weight: 800;
+    font-size: clamp(12px, 3vw, 15px);
+    border: 2px solid #facc15;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  }
+  .combo-pill {
+    background: linear-gradient(90deg, #f97316, #ef4444);
+    border-color: #fde047;
+    color: #fff;
+  }
+
+  /* Barre de progression & Chrono */
+  .progress-wrap {
+    max-width: 680px;
+    width: 100%;
+    margin: 8px auto 0 auto;
+  }
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 800;
+    color: #93c5fd;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+  }
+  .timer-bar-bg {
+    width: 100%;
+    height: 10px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  #timer-bar {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e, #facc15);
+    transition: width 0.1s linear;
+  }
+  #timer-bar.urgent {
+    background: #ef4444;
+  }
+
+  /* Zone Question & Buzzer */
+  .stage-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    max-width: 680px;
+    width: 100%;
+    margin: 0 auto;
+    gap: 14px;
+  }
+  .question-card {
+    background: rgba(30, 41, 59, 0.92);
+    border: 2px solid rgba(250, 204, 21, 0.6);
+    border-radius: 20px;
+    padding: 18px 20px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.45);
+  }
+  .cat-tag {
+    display: inline-block;
+    background: rgba(56, 189, 248, 0.2);
+    color: #38bdf8;
+    border: 1px solid #38bdf8;
+    font-size: 11px;
+    font-weight: 900;
+    padding: 3px 12px;
+    border-radius: 20px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  #question-text {
+    font-size: clamp(16px, 4vw, 22px);
+    font-weight: 800;
+    line-height: 1.4;
+    color: #fff;
+  }
+
+  /* Gros Buzzer TV */
+  #buzzer-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  #buzzer-btn {
+    width: clamp(120px, 28vw, 150px);
+    height: clamp(120px, 28vw, 150px);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #f87171, #dc2626 65%, #7f1d1d 100%);
+    border: 6px solid #facc15;
+    color: #fff;
+    font-size: clamp(17px, 4vw, 21px);
+    font-weight: 900;
+    letter-spacing: 1px;
+    cursor: pointer;
+    box-shadow: 0 10px 0 #450a0a, 0 15px 30px rgba(220, 38, 38, 0.6);
+    animation: buzzerPulse 1s infinite alternate;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  #buzzer-btn:active {
+    transform: translateY(6px);
+    box-shadow: 0 4px 0 #450a0a;
+  }
+  @keyframes buzzerPulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.06); }
+  }
+  .buzzer-sub {
+    font-size: 12px;
+    color: #cbd5e1;
+    font-weight: 700;
+  }
+
+  /* Grille des 4 choix de réponse */
+  #choices-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    width: 100%;
+  }
+  @media (min-width: 560px) {
+    #choices-grid { grid-template-columns: 1fr 1fr; }
+  }
+  .choice-btn {
+    background: rgba(15, 23, 42, 0.9);
+    border: 2px solid #475569;
+    color: #fff;
+    padding: 13px 16px;
+    border-radius: 14px;
+    font-size: clamp(14px, 3.4vw, 16px);
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: transform 0.1s, border-color 0.15s, background 0.15s;
+  }
+  .choice-btn:hover { border-color: #facc15; }
+  .choice-btn:active { transform: scale(0.98); }
+  .choice-letter {
+    background: #334155;
+    color: #facc15;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 900;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .choice-btn.correct {
+    background: #15803d !important;
+    border-color: #4ade80 !important;
+    color: #fff;
+  }
+  .choice-btn.wrong {
+    background: #991b1b !important;
+    border-color: #f87171 !important;
+    color: #fff;
+  }
+
+  #feedback-banner {
+    min-height: 24px;
+    font-size: 15px;
+    font-weight: 900;
+    text-align: center;
+  }
+
+  /* Écrans Accueil & Fin */
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(5px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    color: white;
+    padding: 16px;
+    z-index: 30;
+    overflow-y: auto;
+  }
+  .hidden { display: none !important; }
+  h1 {
+    font-size: clamp(24px, 5.5vw, 42px);
+    color: #facc15;
+    text-shadow: 0 4px 0 #1d4ed8, 0 8px 15px rgba(0,0,0,0.6);
+    margin-bottom: 10px;
+  }
+  .howto-card {
+    background: rgba(30, 41, 59, 0.92);
+    border: 2px solid rgba(250, 204, 21, 0.55);
+    border-radius: 16px;
+    padding: 12px 16px;
+    max-width: 480px;
+    width: 100%;
+    margin-bottom: 14px;
+    text-align: left;
+  }
+  .howto-title {
+    font-size: 13px;
+    font-weight: 900;
+    color: #facc15;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .howto-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: clamp(12px, 2.9vw, 14px);
+    color: #e2e8f0;
+    line-height: 1.35;
+  }
+  .selector-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .opt-btn {
+    background: rgba(255,255,255,0.1);
+    border: 2px solid #475569;
+    color: #fff;
+    padding: 7px 13px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .opt-btn.active {
+    border-color: #facc15;
+    background: rgba(250, 204, 21, 0.25);
+  }
+  .btn-main {
+    background: linear-gradient(180deg, #facc15 0%, #eab308 100%);
+    color: #0f172a;
+    border: 3px solid #fff;
+    padding: 13px 34px;
+    font-size: clamp(16px, 4vw, 20px);
+    font-weight: 900;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 6px 0 #a16207;
+    text-transform: uppercase;
+  }
+  .btn-main:active { transform: translateY(4px); }
+  .btn-share {
+    background: linear-gradient(180deg, #22c55e 0%, #15803d 100%);
+    color: #fff;
+    border: 2px solid #bbf7d0;
+    padding: 11px 20px;
+    border-radius: 50px;
+    font-size: clamp(12px, 3vw, 14px);
+    font-weight: 900;
+    cursor: pointer;
+    margin-top: 12px;
+    box-shadow: 0 5px 0 #14532d;
+  }
+  .diploma-box {
+    background: linear-gradient(135deg, rgba(250,204,21,0.18), rgba(59,130,246,0.18));
+    border: 2px solid #facc15;
+    border-radius: 16px;
+    padding: 12px 18px;
+    margin-bottom: 14px;
+    max-width: 440px;
+    width: 100%;
+  }
+  .diploma-rank {
+    font-size: clamp(17px, 4.2vw, 22px);
+    font-weight: 900;
+    color: #4ade80;
+    margin-bottom: 4px;
+  }
+  .stats-grid {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .stat-card {
+    background: rgba(255,255,255,0.1);
+    padding: 9px 15px;
+    border-radius: 14px;
+    border: 1px solid rgba(250, 204, 21, 0.4);
+  }
+  .stat-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+  .stat-val { font-size: clamp(18px, 4.5vw, 24px); font-weight: 900; color: #facc15; }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+  <div id="hud">
+    <div class="badge">🏆 <span id="best-score">0</span></div>
+    <div class="badge combo-pill" id="combo-badge">🔥 Combo x1</div>
+    <div class="badge">⭐ <span id="current-score">0</span> pts</div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="meta-row">
+      <span id="q-counter">Question 1 / 10</span>
+      <span id="diff-label" style="color:#4ade80;">🟢 Niveau Facile</span>
+      <span id="time-text">10.0s</span>
+    </div>
+    <div class="timer-bar-bg">
+      <div id="timer-bar"></div>
+    </div>
+  </div>
+
+  <div class="stage-area">
+    <div class="question-card">
+      <div class="cat-tag" id="cat-tag">CULTURE GÉNÉRALE</div>
+      <div id="question-text">Appuie sur Jouer pour lancer la partie !</div>
+    </div>
+
+    <div id="buzzer-zone">
+      <button id="buzzer-btn">⚡<br>BUZZER</button>
+      <div class="buzzer-sub">Touche vite le Buzzer (ou Espace) pour bloquer le chrono !</div>
+    </div>
+
+    <div id="choices-grid" class="hidden"></div>
+    <div id="feedback-banner"></div>
+  </div>
+
+  <div id="start-screen" class="overlay">
+    <h1>🧠 GÉNIE EN HERBE</h1>
+    <div class="howto-card">
+      <div class="howto-title">📋 Comment jouer (Règles du Plateau TV)</div>
+      <ul class="howto-list">
+        <li>1️⃣ <b>Lis la question</b> et appuie le plus vite possible sur le gros bouton rouge <b>⚡ BUZZER</b> (10 secondes par question).</li>
+        <li>2️⃣ <b>Choisis la bonne réponse</b> parmi les 4 propositions avant la fin du temps.</li>
+        <li>3️⃣ <b>Enchaîne les bonnes réponses</b> pour activer le <b>Combo x2 / x3</b> et grimper de <b>Facile</b> à <b>Expert</b> !</li>
+      </ul>
+    </div>
+    <div class="selector-row">
+      <button class="opt-btn active" id="theme-classic">🔵 Plateau TV Classique</button>
+      <button class="opt-btn" id="theme-gold">👑 Plateau VIP Or (🔒 Inviter 1 ami)</button>
+    </div>
+    <button class="btn-main" id="start-btn">ENTRER SUR LE PLATEAU</button>
+  </div>
+
+  <div id="gameover-screen" class="overlay hidden">
+    <h1>🎓 RÉSULTAT FINAL</h1>
+    <div class="diploma-box">
+      <div class="diploma-rank" id="diploma-title">🏆 GRAND CHAMPION</div>
+      <div style="font-size:13px; color:#cbd5e1;" id="diploma-desc">Culture générale impressionnante !</div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Score</div>
+        <div class="stat-val" id="final-score" style="color:#fff;">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Bonnes Rép.</div>
+        <div class="stat-val" id="final-correct" style="color:#4ade80;">0/10</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Record</div>
+        <div class="stat-val" id="final-best">0</div>
+      </div>
+    </div>
+    <button class="btn-main" id="restart-btn">NOUVELLE MANCHE</button>
+    <button class="btn-share" id="share-btn">🎁 DÉFIER 1 AMI SUR WHATSAPP & DÉBLOQUER LE PLATEAU OR</button>
+  </div>
+</div>
+
+<script>
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playSound(type) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  const now = audioCtx.currentTime;
+
+  if (type === 'buzz') {
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(150, now);
+    osc.frequency.exponentialRampToValueAtTime(320, now + 0.14);
+    gain.gain.setValueAtTime(0.14, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+    osc.start(now); osc.stop(now + 0.16);
+  } else if (type === 'correct') {
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(523, now);
+    osc.frequency.setValueAtTime(659, now + 0.08);
+    osc.frequency.setValueAtTime(784, now + 0.16);
+    gain.gain.setValueAtTime(0.13, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc.start(now); osc.stop(now + 0.35);
+  } else if (type === 'wrong') {
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(140, now);
+    osc.frequency.linearRampToValueAtTime(90, now + 0.35);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+    osc.start(now); osc.stop(now + 0.36);
+  }
+}
+
+// Banque de 36 questions classées par niveau (1 = Facile, 2 = Moyen, 3 = Expert)
+const QUESTIONS_DB = [
+  // NIVEAU 1 : FACILE (Questions 1 à 4)
+  { lvl: 1, cat: 'GÉOGRAPHIE', q: 'Quel est le plus grand océan du monde ?', opts: ['Océan Atlantique', 'Océan Pacifique', 'Océan Indien', 'Océan Arctique'], ans: 1 },
+  { lvl: 1, cat: 'SCIENCES', q: 'Quelle planète est surnommée la « planète rouge » ?', opts: ['Vénus', 'Jupiter', 'Mars', 'Saturne'], ans: 2 },
+  { lvl: 1, cat: 'CULTURE GÉNÉRALE', q: 'Combien y a-t-il de continents sur Terre ?', opts: ['5', '6', '7', '8'], ans: 2 },
+  { lvl: 1, cat: 'SPORT', q: 'Combien de joueurs composent une équipe de football sur le terrain ?', opts: ['9', '10', '11', '12'], ans: 2 },
+  { lvl: 1, cat: 'GÉOGRAPHIE', q: 'Quel fleuve traverse l’Égypte du sud au nord ?', opts: ['Le Congo', 'Le Nil', 'Le Niger', 'Le Zambèze'], ans: 1 },
+  { lvl: 1, cat: 'SCIENCES', q: 'Quel gaz les plantes absorbent-elles principalement pour la photosynthèse ?', opts: ['Oxygène', 'Azote', 'Dioxyde de carbone', 'Hélium'], ans: 2 },
+  { lvl: 1, cat: 'CULTURE GÉNÉRALE', q: 'Quelle est la capitale du Sénégal ?', opts: ['Bamako', 'Dakar', 'Abidjan', 'Conakry'], ans: 1 },
+  { lvl: 1, cat: 'SPORT', q: 'Tous les combien d’années ont lieu les Jeux Olympiques d’été ?', opts: ['2 ans', '3 ans', '4 ans', '5 ans'], ans: 2 },
+  { lvl: 1, cat: 'GÉOGRAPHIE', q: 'Quel est le plus grand désert chaud du monde ?', opts: ['Désert de Gobi', 'Désert du Kalahari', 'Le Sahara', 'Désert d’Atacama'], ans: 2 },
+  { lvl: 1, cat: 'SCIENCES', q: 'À quelle température l’eau pure bout-elle au niveau de la mer ?', opts: ['80 °C', '90 °C', '100 °C', '120 °C'], ans: 2 },
+  { lvl: 1, cat: 'CULTURE GÉNÉRALE', q: 'Qui a peint la célèbre Joconde ?', opts: ['Pablo Picasso', 'Vincent van Gogh', 'Léonard de Vinci', 'Claude Monet'], ans: 2 },
+  { lvl: 1, cat: 'GÉOGRAPHIE', q: 'Quelle est la capitale économique de la Côte d’Ivoire ?', opts: ['Yamoussoukro', 'Abidjan', 'Bouaké', 'Korhogo'], ans: 1 },
+
+  // NIVEAU 2 : MOYEN (Questions 5 à 7)
+  { lvl: 2, cat: 'SCIENCES', q: 'Quel est le symbole chimique de l’or dans le tableau périodique ?', opts: ['Ag', 'Or', 'Au', 'Fe'], ans: 2 },
+  { lvl: 2, cat: 'GÉOGRAPHIE', q: 'Quel pays possède le plus grand nombre d’habitants en Afrique ?', opts: ['Éthiopie', 'Égypte', 'RD Congo', 'Nigeria'], ans: 3 },
+  { lvl: 2, cat: 'HISTOIRE', q: 'En quelle année l’homme a-t-il marché sur la Lune pour la première fois ?', opts: ['1965', '1969', '1972', '1975'], ans: 1 },
+  { lvl: 2, cat: 'CULTURE GÉNÉRALE', q: 'Quelle est la langue la plus parlée au monde en nombre de locuteurs natifs ?', opts: ['Anglais', 'Espagnol', 'Mandarin', 'Hindi'], ans: 2 },
+  { lvl: 2, cat: 'SPORT', q: 'Quel pays a remporté la Coupe du Monde de football 2022 ?', opts: ['France', 'Brésil', 'Argentine', 'Allemagne'], ans: 2 },
+  { lvl: 2, cat: 'SCIENCES', q: 'Quel organe du corps humain produit l’insuline ?', opts: ['Le foie', 'Le pancréas', 'Les reins', 'La rate'], ans: 1 },
+  { lvl: 2, cat: 'GÉOGRAPHIE', q: 'Quelle est la plus haute montagne d’Afrique ?', opts: ['Mont Kenya', 'Mont Cameroun', 'Kilimandjaro', 'Mont Toubkal'], ans: 2 },
+  { lvl: 2, cat: 'CULTURE GÉNÉRALE', q: 'Combien de touches compte un piano classique standard ?', opts: ['66', '76', '88', '96'], ans: 2 },
+  { lvl: 2, cat: 'HISTOIRE', q: 'Qui fut le premier président de l’Afrique du Sud post-apartheid ?', opts: ['Desmond Tutu', 'Nelson Mandela', 'Thabo Mbeki', 'Kwame Nkrumah'], ans: 1 },
+  { lvl: 2, cat: 'GÉOGRAPHIE', q: 'Quel détroit sépare l’Afrique de l’Europe entre le Maroc et l’Espagne ?', opts: ['Détroit d’Ormuz', 'Détroit de Béring', 'Détroit de Gibraltar', 'Détroit de Malacca'], ans: 2 },
+  { lvl: 2, cat: 'SCIENCES', q: 'Quelle est la vitesse approximative de la lumière dans le vide ?', opts: ['30 000 km/s', '300 000 km/s', '3 000 km/s', '150 000 km/s'], ans: 1 },
+  { lvl: 2, cat: 'SPORT', q: 'Combien de sets faut-il gagner pour remporter un match masculin à Roland-Garros ?', opts: ['2 sets', '3 sets', '4 sets', '5 sets'], ans: 1 },
+
+  // NIVEAU 3 : EXPERT (Questions 8 à 10)
+  { lvl: 3, cat: 'SCIENCES', q: 'Quel os est le plus petit du corps humain ?', opts: ['Le marteau', 'L’enclume', 'L’étrier', 'La phalange'], ans: 2 },
+  { lvl: 3, cat: 'GÉOGRAPHIE', q: 'Quelle est la capitale de l’Australie ?', opts: ['Sydney', 'Melbourne', 'Canberra', 'Perth'], ans: 2 },
+  { lvl: 3, cat: 'HISTOIRE', q: 'Quel empire ouest-africain fut dirigé par le célèbre Kankou Moussa au XIVe siècle ?', opts: ['Empire du Ghana', 'Empire du Mali', 'Empire Songhaï', 'Royaume du Dahomey'], ans: 1 },
+  { lvl: 3, cat: 'CULTURE GÉNÉRALE', q: 'Quel écrivain nigérian a reçu le prix Nobel de littérature en 1986 ?', opts: ['Chinua Achebe', 'Wole Soyinka', 'Chimamanda Ngozi Adichie', 'Ben Okri'], ans: 1 },
+  { lvl: 3, cat: 'SCIENCES', q: 'Quelle particule subatomique possède une charge électrique négative ?', opts: ['Proton', 'Neutron', 'Électron', 'Photon'], ans: 2 },
+  { lvl: 3, cat: 'GÉOGRAPHIE', q: 'Quel pays possède la plus longue côte maritime au monde ?', opts: ['Russie', 'Indonésie', 'Canada', 'Australie'], ans: 2 },
+  { lvl: 3, cat: 'SPORT', q: 'Quel athlète détient le record du monde du 100 mètres en 9,58 secondes ?', opts: ['Tyson Gay', 'Yohan Blake', 'Usain Bolt', 'Asafa Powell'], ans: 2 },
+  { lvl: 3, cat: 'CULTURE GÉNÉRALE', q: 'Dans quel pays se trouve la cité antique de Pétra ?', opts: ['Égypte', 'Jordanie', 'Syrie', 'Liban'], ans: 1 },
+  { lvl: 3, cat: 'SCIENCES', q: 'Quel métal est liquide à température ambiante ?', opts: ['Le gallium', 'Le mercure', 'Le zinc', 'Le plomb'], ans: 1 },
+  { lvl: 3, cat: 'GÉOGRAPHIE', q: 'Quel lac africain est le deuxième plus grand lac d’eau douce au monde par sa superficie ?', opts: ['Lac Tanganyika', 'Lac Malawi', 'Lac Victoria', 'Lac Tchad'], ans: 2 },
+  { lvl: 3, cat: 'HISTOIRE', q: 'En quelle année la chute du mur de Berlin a-t-elle eu lieu ?', opts: ['1987', '1989', '1991', '1993'], ans: 1 },
+  { lvl: 3, cat: 'CULTURE GÉNÉRALE', q: 'Combien de cœurs possède une pieuvre ?', opts: ['1', '2', '3', '4'], ans: 2 }
+];
+
+let bestScore = parseInt(localStorage.getItem('genie_best')) || 0;
+let goldUnlocked = localStorage.getItem('genie_gold') === 'true';
+let goldActive = localStorage.getItem('genie_gold_active') === 'true';
+
+function updateThemeUI() {
+  const container = document.getElementById('game-container');
+  const btnGold = document.getElementById('theme-gold');
+  const btnClassic = document.getElementById('theme-classic');
+  container.classList.toggle('gold-theme', goldUnlocked && goldActive);
+  btnGold.textContent = goldUnlocked ? (goldActive ? '👑 Plateau VIP Or (Actif)' : '👑 Plateau VIP Or (Débloqué)') : '👑 Plateau VIP Or (🔒 Inviter 1 ami)';
+  btnClassic.classList.toggle('active', !(goldUnlocked && goldActive));
+  btnGold.classList.toggle('active', goldUnlocked && goldActive);
+}
+updateThemeUI();
+document.getElementById('best-score').textContent = bestScore;
+
+let sessionQuestions = [];
+let qIndex = 0;
+let score = 0;
+let correctCount = 0;
+let combo = 1;
+let timeLeft = 10;
+let timerInterval = null;
+let phase = 'IDLE'; // IDLE, BUZZ_WAIT, ANSWERING, LOCKED
+let buzzSpeedBonus = 0;
+
+function buildSessionQuestions() {
+  const easy = QUESTIONS_DB.filter(q => q.lvl === 1).sort(() => Math.random() - 0.5).slice(0, 4);
+  const med = QUESTIONS_DB.filter(q => q.lvl === 2).sort(() => Math.random() - 0.5).slice(0, 3);
+  const hard = QUESTIONS_DB.filter(q => q.lvl === 3).sort(() => Math.random() - 0.5).slice(0, 3);
+  return [...easy, ...med, ...hard];
+}
+
+function startGame() {
+  initAudio();
+  sessionQuestions = buildSessionQuestions();
+  qIndex = 0;
+  score = 0;
+  correctCount = 0;
+  combo = 1;
+
+  document.getElementById('current-score').textContent = '0';
+  document.getElementById('combo-badge').textContent = '🔥 Combo x1';
+  document.getElementById('start-screen').classList.add('hidden');
+  document.getElementById('gameover-screen').classList.add('hidden');
+
+  loadQuestion();
+}
+
+function loadQuestion() {
+  const qObj = sessionQuestions[qIndex];
+  phase = 'BUZZ_WAIT';
+  timeLeft = 10.0;
+  buzzSpeedBonus = 0;
+
+  document.getElementById('q-counter').textContent = `Question ${qIndex + 1} / 10`;
+  const diffEl = document.getElementById('diff-label');
+  if (qObj.lvl === 1) { diffEl.textContent = '🟢 Facile'; diffEl.style.color = '#4ade80'; }
+  else if (qObj.lvl === 2) { diffEl.textContent = '🟡 Moyen'; diffEl.style.color = '#facc15'; }
+  else { diffEl.textContent = '🔴 Expert'; diffEl.style.color = '#f87171'; }
+
+  document.getElementById('cat-tag').textContent = qObj.cat;
+  document.getElementById('question-text').textContent = qObj.q;
+  document.getElementById('feedback-banner').textContent = '';
+
+  document.getElementById('buzzer-zone').classList.remove('hidden');
+  document.getElementById('choices-grid').classList.add('hidden');
+
+  const bar = document.getElementById('timer-bar');
+  bar.style.width = '100%';
+  bar.classList.remove('urgent');
+  document.getElementById('time-text').textContent = '10.0s';
+
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timeLeft = Math.max(0, timeLeft - 0.1);
+    document.getElementById('time-text').textContent = timeLeft.toFixed(1) + 's';
+    bar.style.width = (timeLeft * 10) + '%';
+    if (timeLeft <= 3) bar.classList.add('urgent');
+
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      handleTimeout();
+    }
+  }, 100);
+}
+
+function triggerBuzzer() {
+  if (phase !== 'BUZZ_WAIT') return;
+  phase = 'ANSWERING';
+  playSound('buzz');
+
+  // Bonus de rapidité selon le temps restant au moment du buzz
+  buzzSpeedBonus = Math.round(timeLeft * 5);
+
+  document.getElementById('buzzer-zone').classList.add('hidden');
+  const grid = document.getElementById('choices-grid');
+  grid.innerHTML = '';
+  grid.classList.remove('hidden');
+
+  const qObj = sessionQuestions[qIndex];
+  const letters = ['A', 'B', 'C', 'D'];
+
+  qObj.opts.forEach((optText, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.innerHTML = `<span class="choice-letter">${letters[idx]}</span><span>${optText}</span>`;
+    btn.onclick = () => selectAnswer(idx, btn);
+    grid.appendChild(btn);
+  });
+}
+
+function selectAnswer(chosenIdx, btnEl) {
+  if (phase !== 'ANSWERING') return;
+  phase = 'LOCKED';
+  clearInterval(timerInterval);
+
+  const qObj = sessionQuestions[qIndex];
+  const allBtns = document.querySelectorAll('.choice-btn');
+  const fb = document.getElementById('feedback-banner');
+
+  if (chosenIdx === qObj.ans) {
+    btnEl.classList.add('correct');
+    playSound('correct');
+    const earned = (100 + buzzSpeedBonus) * combo;
+    score += earned;
+    correctCount++;
+    combo = Math.min(combo + 1, 4);
+
+    document.getElementById('current-score').textContent = score;
+    document.getElementById('combo-badge').textContent = `🔥 Combo x${combo}`;
+    fb.textContent = `✅ EXCELLENT ! +${earned} pts (Bonus rapidité +${buzzSpeedBonus})`;
+    fb.style.color = '#4ade80';
+  } else {
+    btnEl.classList.add('wrong');
+    allBtns[qObj.ans].classList.add('correct');
+    playSound('wrong');
+    combo = 1;
+    document.getElementById('combo-badge').textContent = '🔥 Combo x1';
+    fb.textContent = `❌ Mauvaise réponse ! La bonne réponse était : ${qObj.opts[qObj.ans]}`;
+    fb.style.color = '#f87171';
+  }
+
+  setTimeout(nextStep, 1600);
+}
+
+function handleTimeout() {
+  phase = 'LOCKED';
+  playSound('wrong');
+  combo = 1;
+  document.getElementById('combo-badge').textContent = '🔥 Combo x1';
+
+  const qObj = sessionQuestions[qIndex];
+  document.getElementById('buzzer-zone').classList.add('hidden');
+  const fb = document.getElementById('feedback-banner');
+  fb.textContent = `⏱️ TEMPS ÉCOULÉ ! Réponse : ${qObj.opts[qObj.ans]}`;
+  fb.style.color = '#facc15';
+
+  setTimeout(nextStep, 1600);
+}
+
+function nextStep() {
+  qIndex++;
+  if (qIndex < sessionQuestions.length) {
+    loadQuestion();
+  } else {
+    endGame();
+  }
+}
+
+function endGame() {
+  if (score > bestScore) {
+    bestScore = score;
+    localStorage.setItem('genie_best', bestScore);
+    document.getElementById('best-score').textContent = bestScore;
+  }
+
+  const title = document.getElementById('diploma-title');
+  const desc = document.getElementById('diploma-desc');
+
+  if (correctCount >= 9) {
+    title.textContent = '👑 GÉNIE ABSOLU !';
+    title.style.color = '#facc15';
+    desc.textContent = 'Score légendaire ! Tu es prêt pour la finale télévisée.';
+  } else if (correctCount >= 6) {
+    title.textContent = '🎓 ESPRIT BRILLANT !';
+    title.style.color = '#4ade80';
+    desc.textContent = 'Très belle culture générale et excellents réflexes au buzzer !';
+  } else {
+    title.textContent = '📚 APPRENTI CURIEUX';
+    title.style.color = '#38bdf8';
+    desc.textContent = 'Bon échauffement ! Retente ta chance pour battre ton record.';
+  }
+
+  document.getElementById('final-score').textContent = score + ' pts';
+  document.getElementById('final-correct').textContent = `${correctCount}/10`;
+  document.getElementById('final-best').textContent = bestScore + ' pts';
+  document.getElementById('gameover-screen').classList.remove('hidden');
+}
+
+function shareAndUnlock() {
+  goldUnlocked = true;
+  goldActive = true;
+  localStorage.setItem('genie_gold', 'true');
+  localStorage.setItem('genie_gold_active', 'true');
+  updateThemeUI();
+  const text = encodeURIComponent(`🧠 J'ai obtenu ${score} points (${correctCount}/10) au quiz Génie en Herbe ! Es-tu plus rapide que moi au Buzzer ? Joue ici : ${window.location.href}`);
+  window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+}
+
+document.getElementById('start-btn').onclick = startGame;
+document.getElementById('restart-btn').onclick = startGame;
+document.getElementById('buzzer-btn').onclick = triggerBuzzer;
+document.getElementById('share-btn').onclick = shareAndUnlock;
+
+document.getElementById('theme-classic').onclick = () => {
+  goldActive = false; localStorage.setItem('genie_gold_active', 'false'); updateThemeUI();
+};
+document.getElementById('theme-gold').onclick = () => {
+  if (goldUnlocked) { goldActive = true; localStorage.setItem('genie_gold_active', 'true'); updateThemeUI(); }
+  else shareAndUnlock();
+};
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && phase === 'BUZZ_WAIT') {
+    e.preventDefault();
+    triggerBuzzer();
+  }
+});
+</script>
+</body>
+</html>
